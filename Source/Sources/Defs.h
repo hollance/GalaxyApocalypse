@@ -1,0 +1,8 @@
+
+#define POINTS_TO_METERS_RATIO 36.0f
+#define POINTS_TO_METERS(n) ((n) / (POINTS_TO_METERS_RATIO))
+#define METERS_TO_POINTS(n) ((n) * (POINTS_TO_METERS_RATIO))
+
+#define GRAVITY 0.0f
+
+#define DEBUG_DRAW 0
