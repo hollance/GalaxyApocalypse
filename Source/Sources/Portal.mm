@@ -24,14 +24,16 @@ const float PortalHeight = 20.0f;
 	ccTime _flickerTime;
 }
 
-@synthesize isDead = _isDead;
-
-- (id)initWithWorld:(b2World *)world edge:(PortalEdge)edge
+- (id)initWithWorld:(b2World *)world edge:(PortalEdge)edge position:(CGPoint)position size:(CGSize)size color:(int)color
 {
 	if ((self = [super init]))
 	{
 		_world = world;
 		_edge = edge;
+		_position = position;
+		_size = size;
+		_color = color;
+
 		_power = 1.0f;
 		_flickerTime = 0.0f;
 	}
@@ -42,24 +44,24 @@ const float PortalHeight = 20.0f;
 {
 	//NSLog(@"dealloc %@", self);
 
-	[_startCapSprite removeFromParentAndCleanup:YES];
-	[_endCapSprite removeFromParentAndCleanup:YES];
-	[_beamSprite removeFromParentAndCleanup:YES];
-	[_flashSprite removeFromParentAndCleanup:YES];
-
-	[self removeBody];  // should already have been done
-}
-
-- (void)moveTo:(CGPoint)position size:(CGSize)size color:(int)color
-{
-	_position = position;
-	_size = size;
-	_color = color;
+	[self removeSprites];
+	[self removeBody];
 }
 
 - (CGPoint)center
 {
 	return _position;
+}
+
+- (void)setPower:(float)power
+{
+	if (power > 1.0f)
+		power = 1.0f;
+	else if (power < 0.0f)
+		power = 0.0f;
+
+	_power = power;
+	_beamSprite.opacity = _power * 255;
 }
 
 - (CGPoint)startCapInitialPosition
@@ -190,31 +192,41 @@ const float PortalHeight = 20.0f;
 		[CCDelayTime actionWithDuration:1.0f],
 		[CCFadeIn actionWithDuration:0.2f],
 		[CCFadeOut actionWithDuration:0.5f],
-		[CCCallFunc actionWithTarget:self selector:@selector(flashAnimationComplete)],
+		[CCCallBlock actionWithBlock:^
+		{
+			_flashSprite.visible = NO;
+			[self addBody];
+		}],
 		nil];
 
 	[_flashSprite runAction:flashAction];
 }
 
-- (void)removeFromParent
+- (void)removeSprites
 {
-	[_startCapSprite removeFromParentAndCleanup:YES];
-	_startCapSprite = nil;
+	if (_startCapSprite != nil)
+	{
+		[_startCapSprite removeFromParentAndCleanup:YES];
+		_startCapSprite = nil;
+	}
 
-	[_endCapSprite removeFromParentAndCleanup:YES];
-	_endCapSprite = nil;
+	if (_endCapSprite != nil)
+	{
+		[_endCapSprite removeFromParentAndCleanup:YES];
+		_endCapSprite = nil;
+	}
 
-	[_beamSprite removeFromParentAndCleanup:YES];
-	_beamSprite = nil;
+	if (_beamSprite != nil)
+	{
+		[_beamSprite removeFromParentAndCleanup:YES];
+		_beamSprite = nil;
+	}
 
-	[_flashSprite removeFromParentAndCleanup:YES];
-	_flashSprite = nil;
-}
-
-- (void)flashAnimationComplete
-{
-	_flashSprite.visible = NO;
-	[self addBody];
+	if (_flashSprite != nil)
+	{
+		[_flashSprite removeFromParentAndCleanup:YES];
+		_flashSprite = nil;
+	}
 }
 
 - (void)addBody
@@ -246,7 +258,7 @@ const float PortalHeight = 20.0f;
 
 	b2BodyDef capBodyDef;
 	capBodyDef.type = b2_staticBody;
-	capBodyDef.userData = NULL;   // so it doesn't count for collisions
+	capBodyDef.userData = NULL;      // it doesn't count for collisions
 
 	CGPoint startCapPosition = [self startCapPosition];
 	CGPoint endCapPosition = [self endCapPosition];
@@ -281,6 +293,20 @@ const float PortalHeight = 20.0f;
 	}
 }
 
+- (void)update:(ccTime)dt
+{
+	_flickerTime -= dt;
+	if (_flickerTime <= 0.0f)
+	{
+		_flickerTime = 0.02f + MHRandomFloat() * 0.1f;
+		
+		if (_edge == PortalEdgeBottom)
+			_beamSprite.flipY = !_beamSprite.flipY;
+		else
+			_beamSprite.flipX = !_beamSprite.flipX;
+	}
+}
+
 - (void)animateDisappearing
 {
 	[self removeBody];
@@ -304,15 +330,10 @@ const float PortalHeight = 20.0f;
 	id beamAction = [CCSequence actions:
 		[CCFadeTo actionWithDuration:0.2f opacity:0],
 		[CCDelayTime actionWithDuration:1.0f],
-		[CCCallFunc actionWithTarget:self selector:@selector(disappearingAnimationComplete)],
+		[CCCallBlock actionWithBlock:^{ self.isDead = YES; }],
 		nil];
 
 	[_beamSprite runAction:beamAction];
-}
-
-- (void)disappearingAnimationComplete
-{
-	self.isDead = YES;
 }
 
 - (void)animateCollision
@@ -322,40 +343,10 @@ const float PortalHeight = 20.0f;
 
 	id flashAction = [CCSequence actions:
 		[CCFadeOut actionWithDuration:0.2f],
-		[CCCallFunc actionWithTarget:self selector:@selector(collisionAnimationComplete)],
+		[CCCallBlock actionWithBlock:^ { _flashSprite.visible = NO; }],
 		nil];
 
 	[_flashSprite runAction:flashAction];
-}
-
-- (void)collisionAnimationComplete
-{
-	_flashSprite.visible = NO;
-}
-
-- (void)setPower:(float)power
-{
-	if (power > 1.0f)
-		power = 1.0f;
-	else if (power < 0.0f)
-		power = 0.0f;
-
-	_power = power;
-	_beamSprite.opacity = _power * 255;
-}
-
-- (void)update:(ccTime)dt
-{
-	_flickerTime -= dt;
-	if (_flickerTime <= 0.0f)
-	{
-		_flickerTime = 0.02f + MHRandomFloat() * 0.1f;
-		
-		if (_edge == PortalEdgeBottom)
-			_beamSprite.flipY = !_beamSprite.flipY;
-		else
-			_beamSprite.flipX = !_beamSprite.flipX;
-	}
 }
 
 @end

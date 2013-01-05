@@ -1,36 +1,16 @@
 
 #import "Box2D.h"
+#import "GLES-Render.h"
 #import "SimpleAudioEngine.h"
-#import "GameLayer.h"
-#import "MainScene.h"
-#import "Defs.h"
-#import "ContactListener.h"
-#import "Planet.h"
-#import "Portal.h"
 #import "MHRandom.h"
 #import "MHUtil.h"
-#import "GLES-Render.h"
 
-class MyQueryCallback : public b2QueryCallback
-{
-public:
-	b2Vec2 impulse;
-
-	bool ReportFixture(b2Fixture *fixture)
-	{
-		b2Body *body = fixture->GetBody();
-
-		if (body->GetType() == b2_dynamicBody)
-		{
-			body->ApplyLinearImpulse(impulse, body->GetWorldCenter());
-
-			float direction = (impulse.x < 0.0f) ? 1.0f : -1.0f;
-			body->ApplyAngularImpulse(direction * impulse.Length() / 10.0f);
-		}
-
-		return true;
-	}
-};
+#import "GameLayer.h"
+#import "ContactListener.h"
+#import "Defs.h"
+#import "MainScene.h"
+#import "Planet.h"
+#import "Portal.h"
 
 #pragma mark - GameLayer
 
@@ -51,17 +31,20 @@ public:
 	CCLabelBMFont *_timerLabel;
 	CCLabelBMFont *_dangerLabel;
 	CCLabelBMFont *_instructionsLabel;
+	CCSpriteBatchNode *_explosionBatchNode;
+	CCAnimation *_explosionAnimation;
 
 	ccTime _timeUntilNextSpawn;
 	ccTime _timeUntilPortalsAppear;
 	ccTime _timeUntilPortalsDisappear;
 	ccTime _timeUntilPortalsDrain;
-	b2Vec2 _lastTouch;
+	b2Vec2 _lastTouchLocation;
 
 	NSMutableArray *_planets;
 	NSMutableArray *_portals;
-	BOOL _gameActive;
-	BOOL _gameOver;
+	NSMutableArray *_deadPlanets;
+	NSMutableArray *_deadPortals;
+
 	BOOL _firstTime;
 	int _score;
 	int _portalProbabilities[3];
@@ -74,21 +57,20 @@ public:
 	ccTime _timeUntilFlashDangerous;
 	ccTime _dangerFlashRate;
 	ALuint _dangerSoundID;
-
-	CCSpriteBatchNode *_explosionBatchNode;
-	CCAnimation *_explosionAnimation;
 }
 
 - (id)init
 {
 	if ((self = [super init]))
 	{
-		self.isTouchEnabled = YES;
+		self.isTouchEnabled = NO;
+
 		_winSize = [CCDirector sharedDirector].winSize;
 
 		[self setUpWorld];
 		[self setUpScreenBox];
 		[self setUpSprites];
+		[self setUpExplosionAnimation];
 	}
 	return self;
 }
@@ -121,7 +103,9 @@ public:
 
 - (void)setUpScreenBox
 {
-	// Initializes a static body that surrounds the entire screen.
+	// Initializes a static body that is slightly larger than the visible
+	// screen, so that planets are allowed to fall outside the screen bounds.
+	// Planets are removed from the game when they hit these fixtures.
 
 	float w = POINTS_TO_METERS(_winSize.width);
 	float h = POINTS_TO_METERS(_winSize.height);
@@ -132,19 +116,22 @@ public:
 	_screenBody = _world->CreateBody(&bodyDef);
 
 	const float Margin = POINTS_TO_METERS(200.0f);
-	b2EdgeShape wall;
 
-	wall.Set(b2Vec2(-Margin, -Margin), b2Vec2(w + Margin, -Margin));        // bottom
-	_bottomFixture = _screenBody->CreateFixture(&wall, 0.0f);
+	b2EdgeShape bottomWall;
+	bottomWall.Set(b2Vec2(-Margin, -Margin), b2Vec2(w + Margin, -Margin));
+	_bottomFixture = _screenBody->CreateFixture(&bottomWall, 0.0f);
 
-	wall.Set(b2Vec2(-Margin, h + Margin), b2Vec2(w + Margin, h + Margin));  // top
-	_topFixture = _screenBody->CreateFixture(&wall, 0.0f);
+	b2EdgeShape topWall;
+	topWall.Set(b2Vec2(-Margin, h + Margin), b2Vec2(w + Margin, h + Margin));
+	_topFixture = _screenBody->CreateFixture(&topWall, 0.0f);
 
-	wall.Set(b2Vec2(-Margin, -Margin), b2Vec2(-Margin, h + Margin));        // left
-	_leftFixture = _screenBody->CreateFixture(&wall, 0.0f);
+	b2EdgeShape leftWall;
+	leftWall.Set(b2Vec2(-Margin, -Margin), b2Vec2(-Margin, h + Margin));
+	_leftFixture = _screenBody->CreateFixture(&leftWall, 0.0f);
 
-	wall.Set(b2Vec2(w + Margin, -Margin), b2Vec2(w + Margin, h + Margin));  // right
-	_rightFixture = _screenBody->CreateFixture(&wall, 0.0f);
+	b2EdgeShape rightWall;
+	rightWall.Set(b2Vec2(w + Margin, -Margin), b2Vec2(w + Margin, h + Margin));
+	_rightFixture = _screenBody->CreateFixture(&rightWall, 0.0f);
 }
 
 - (void)setUpSprites
@@ -154,7 +141,10 @@ public:
 	[self addChild:_spriteBatchNode z:1];
 
 	[[CCSpriteFrameCache sharedSpriteFrameCache] addSpriteFramesWithFile:@"Sprites.plist" texture:_spriteBatchNode.texture];
+}
 
+- (void)setUpExplosionAnimation
+{
 	_explosionBatchNode = [CCSpriteBatchNode batchNodeWithFile:@"Explosion.png" capacity:150];
 	[self addChild:_explosionBatchNode z:2];
 
@@ -197,11 +187,12 @@ public:
 {
 	[[SimpleAudioEngine sharedEngine] playBackgroundMusic:@"Game.mp3"];
 
-	_gameActive = YES;
-	_gameOver = NO;
-	_firstTime = YES;
 	_planets = [NSMutableArray arrayWithCapacity:100];
 	_portals = [NSMutableArray arrayWithCapacity:3];
+	_deadPlanets = [NSMutableArray arrayWithCapacity:100];
+	_deadPortals = [NSMutableArray arrayWithCapacity:3];
+
+	_firstTime = YES;
 	_score = 0;
 	_portalLifetime = 20.0f;
 	_powerDrainRate = 1.0f / (_portalLifetime + 1.0f);
@@ -225,7 +216,7 @@ public:
 
 	_timerLabel = [CCLabelBMFont labelWithString:@"00:00" fntFile:@"Font.fnt"];
 	_timerLabel.anchorPoint = ccp(1.0f, 0.0f);
-	_timerLabel.position = ccp(_winSize.width, _winSize.height - 20.0f);
+	_timerLabel.position = ccp(_winSize.width - 2.0f, _winSize.height - 20.0f);
 	[self addChild:_timerLabel z:10001];
 
 	_dangerLabel = [CCLabelBMFont labelWithString:@"DANGER!" fntFile:@"Font.fnt"];
@@ -240,51 +231,28 @@ public:
 	[self updateTimerLabel];
 	[self updateDangerLabel:0.0f];
 
+	self.isTouchEnabled = YES;
 	[self schedule:@selector(update:) interval:1.0f/60.0f];
 }
 
-- (void)showInstructionsAnimation
+- (void)update:(ccTime)dt
 {
-	_instructionsLabel = [CCLabelBMFont labelWithString:@"Swipe planets into matching portals\n\nGray moons go into any portal\n\nAny planet can go into a white portal\n\nDon't let the portals run out of power\n\nWatch out for the black hole!" fntFile:@"FontSmall.fnt"];
-	_instructionsLabel.anchorPoint = ccp(0.0f, 0.0f);
-	_instructionsLabel.alignment = kCCTextAlignmentCenter;
-	[self addChild:_instructionsLabel z:10003];
+	const int32 velocityIterations = 8;
+	const int32 positionIterations = 1;
+	_world->Step(dt, velocityIterations, positionIterations);
 
-	CGPoint instructionsPosition = ccp(
-		floorf(_winSize.width/2.0f - _instructionsLabel.contentSize.width/2.0f),
-		floorf(_winSize.height/2.0f - _instructionsLabel.contentSize.height/2.0f));
+	for (Planet *planet in _planets)
+		[planet update:dt];
 
-	id instructionsAction = [CCSequence actions:
-		[CCDelayTime actionWithDuration:0.2f],
-		[CCEaseExponentialOut actionWithAction:[CCMoveTo actionWithDuration:1.0f position:instructionsPosition]],
-		[CCDelayTime actionWithDuration:4.0f],
-		[CCEaseExponentialIn actionWithAction:[CCMoveTo actionWithDuration:0.5f position:ccp(-300.0f, instructionsPosition.y)]],
-		[CCCallFunc actionWithTarget:self selector:@selector(instructionsAnimationComplete)],
-		nil];
+	for (Portal *portal in _portals)
+		[portal update:dt];
 
-	_instructionsLabel.position = ccp(_winSize.width + 300.0f, instructionsPosition.y);
-	[_instructionsLabel runAction:instructionsAction];
-}
-
-- (void)hideInstructionsAnimation
-{
-	if (_instructionsLabel != nil)
-	{
-		[_instructionsLabel stopAllActions];
-
-		id instructionsAction = [CCSequence actions:
-			[CCEaseExponentialIn actionWithAction:[CCMoveTo actionWithDuration:0.2f position:ccp(-300.0f, _instructionsLabel.position.y)]],
-			[CCCallFunc actionWithTarget:self selector:@selector(instructionsAnimationComplete)],
-			nil];
-
-		[_instructionsLabel runAction:instructionsAction];
-	}
-}
-
-- (void)instructionsAnimationComplete
-{
-	[_instructionsLabel removeFromParentAndCleanup:YES];
-	_instructionsLabel = nil;
+	[self handleCollisions];
+	[self spawnNewPlanets:dt];
+	[self updatePortals:dt];
+	[self updateScoreLabel];
+	[self updateTimerLabel];
+	[self updateDangerLabel:dt];
 }
 
 - (void)updateScoreLabel
@@ -319,40 +287,13 @@ public:
 	}
 }
 
-- (void)update:(ccTime)dt
-{
-	if (!_gameActive)
-		return;
-
-	const int32 velocityIterations = 8;
-	const int32 positionIterations = 1;
-	_world->Step(dt, velocityIterations, positionIterations);
-
-	for (b2Body *body = _world->GetBodyList(); body != NULL; body = body->GetNext())
-	{
-		if (body->GetType() == b2_dynamicBody && body->GetUserData() != NULL)
-		{
-			Planet *planet = (__bridge Planet *)body->GetUserData();
-			[planet update:dt];
-		}
-	}
-
-	for (Portal *portal in _portals)
-		[portal update:dt];
-
-	if (_gameOver)
-		return;
-
-	[self handleCollisions];
-	[self updateScoreLabel];
-	[self spawnNewPlanets:dt];
-	[self changePortals:dt];
-	[self updateTimerLabel];
-	[self updateDangerLabel:dt];
-}
+#pragma mark - Collision Handling
 
 - (void)handleCollisions
 {
+	// Note: It might be simpler to just step through b2World's contact list
+	// than using a ContactListener.
+
 	for (ContactIterator pos  = _contactListener->contacts.begin();
 						 pos != _contactListener->contacts.end();
 					   ++pos)
@@ -368,7 +309,7 @@ public:
 		||  contact.fixtureA == _rightFixture)
 		{
 			Planet *planet = (Planet *)actorB;
-			planet.isDead = YES;
+			planet.state = PlanetStateDead;
 		}
 		else if (contact.fixtureB == _bottomFixture
 			 ||  contact.fixtureB == _topFixture
@@ -376,7 +317,7 @@ public:
 			 ||  contact.fixtureB == _rightFixture)
 		{
 			Planet *planet = (Planet *)actorA;
-			planet.isDead = YES;
+			planet.state = PlanetStateDead;
 		}
 		else if (actorA != nil && actorB != nil)
 		{
@@ -385,7 +326,7 @@ public:
 				Portal *portal = (Portal *)actorA;
 				Planet *planet = (Planet *)actorB;
 
-				if (!planet.isDead && !portal.isDead && planet.state == PlanetStateFalling)
+				if (!portal.isDead && planet.state == PlanetStateFalling)
 					planet.collidedWith = portal;
 			}
 			else if ([actorB isKindOfClass:[Portal class]])
@@ -393,7 +334,7 @@ public:
 				Portal *portal = (Portal *)actorB;
 				Planet *planet = (Planet *)actorA;
 
-				if (!planet.isDead && !portal.isDead && planet.state == PlanetStateFalling)
+				if (!portal.isDead && planet.state == PlanetStateFalling)
 					planet.collidedWith = portal;
 			}
 		}
@@ -401,7 +342,8 @@ public:
 
 	// Any actions that destroy the b2Body must be done outside the contact
 	// listener loop, because that modifies the contacts, and doing that at
-	// the same time leads to bad things.
+	// the same time leads to bad things. So we set the "collidedWith" flag
+	// in the loop, and check it in the methods below.
 
 	[self pruneDeadPlanets];
 	[self pruneDeadPortals];
@@ -409,15 +351,11 @@ public:
 
 - (void)pruneDeadPlanets
 {
-	NSMutableArray *deadPlanets;
 	for (Planet *planet in _planets)
 	{
-		if (planet.isDead)
+		if (planet.state == PlanetStateDead)
 		{
-			if (deadPlanets == nil)
-				deadPlanets = [NSMutableArray arrayWithCapacity:_planets.count];
-
-			[deadPlanets addObject:planet];
+			[_deadPlanets addObject:planet];
 		}
 		else if (planet.collidedWith != nil && planet.state == PlanetStateFalling)
 		{
@@ -425,26 +363,22 @@ public:
 		}
 	}
 
-	if (deadPlanets != nil)
-		[_planets removeObjectsInArray:deadPlanets];
+	[_planets removeObjectsInArray:_deadPlanets];
+	[_deadPlanets removeAllObjects];
 }
 
 - (void)pruneDeadPortals
 {
-	NSMutableArray *deadPortals;
 	for (Portal *portal in _portals)
 	{
 		if (portal.isDead)
 		{
-			if (deadPortals == nil)
-				deadPortals = [NSMutableArray arrayWithCapacity:_portals.count];
-
-			[deadPortals addObject:portal];
+			[_deadPortals addObject:portal];
 		}
 	}
 
-	if (deadPortals != nil)
-		[_portals removeObjectsInArray:deadPortals];
+	[_portals removeObjectsInArray:_deadPortals];
+	[_deadPortals removeAllObjects];
 }
 
 - (void)handleCollisionOfPlanet:(Planet *)planet
@@ -477,6 +411,8 @@ public:
 	[planet handleCollision];
 	[portal animateCollision];
 }
+
+#pragma mark - Spawning new objects
 
 - (void)spawnNewPlanets:(ccTime)dt
 {
@@ -520,7 +456,7 @@ public:
 	}
 }
 
-- (void)changePortals:(ccTime)dt
+- (void)updatePortals:(ccTime)dt
 {
 	_timeUntilPortalsDisappear -= dt;
 	if (_timeUntilPortalsDisappear <= 0.0f)
@@ -570,8 +506,6 @@ public:
 		_portalProbabilities[2] += 1;
 		if (_portalProbabilities[2] > 50)
 			_portalProbabilities[2] = 50;
-
-		//NSLog(@"probabilities %d %d %d = %d", _portalProbabilities[0], _portalProbabilities[1], _portalProbabilities[2], _portalProbabilities[0] + _portalProbabilities[1] + _portalProbabilities[2]);
 
 		[[SimpleAudioEngine sharedEngine] playEffect:@"PortalAppear.wav"];
 
@@ -728,8 +662,6 @@ public:
 
 - (void)addPortalAtEdge:(PortalEdge)edge position:(float)p size:(float)s color:(int)color
 {
-	Portal *portal = [[Portal alloc] initWithWorld:_world edge:edge];
-
 	CGPoint position;
 	CGSize size;
 
@@ -749,27 +681,30 @@ public:
 		size = CGSizeMake(PortalHeight, s);
 	}
 
-	[portal moveTo:position size:size color:color];
+	Portal *portal = [[Portal alloc] initWithWorld:_world edge:edge position:position size:size color:color];
 	[portal addSpritesTo:_spriteBatchNode];
 	[_portals addObject:portal];
 }
 
+#pragma mark - Game Over
+
 - (void)gameOver
 {
-	_gameOver = YES;
+	self.isTouchEnabled = NO;
+	[self unschedule:@selector(update:)];
 
 	[[SimpleAudioEngine sharedEngine] playEffect:@"Explosion.wav"];
 
 	for (Planet *planet in _planets)
 	{
 		[self animateExplosionForPlanet:planet];
-		[planet removeFromParent];
+		[planet removeSprite];
 	}
 
 	for (Portal *portal in _portals)
-		[portal removeFromParent];
+		[portal removeSprites];
 
-	[self performSelector:@selector(afterExplosions) withObject:nil afterDelay:1.0f];
+	[self performSelector:@selector(afterExplosions) withObject:nil afterDelay:1.5f];
 }
 
 - (void)animateExplosionForPlanet:(Planet *)planet
@@ -803,12 +738,77 @@ public:
 	[_dangerLabel removeFromParentAndCleanup:YES];
 	_dangerLabel = nil;
 
-	_gameActive = NO;
-	[self unschedule:@selector(update:)];
 	[self.mainScene exitGame:_score];
 }
 
+#pragma mark - Instructions
+
+- (void)showInstructionsAnimation
+{
+	_instructionsLabel = [CCLabelBMFont labelWithString:@"Swipe planets into matching portals\n\nGray moons go into any portal\n\nAny planet can go into a white portal\n\nDon't let the portals run out of power\n\nWatch out for the black hole!" fntFile:@"FontSmall.fnt"];
+	_instructionsLabel.anchorPoint = ccp(0.0f, 0.0f);
+	_instructionsLabel.alignment = kCCTextAlignmentCenter;
+	[self addChild:_instructionsLabel z:10003];
+
+	CGPoint instructionsPosition = ccp(
+		floorf(_winSize.width/2.0f - _instructionsLabel.contentSize.width/2.0f),
+		floorf(_winSize.height/2.0f - _instructionsLabel.contentSize.height/2.0f));
+
+	id instructionsAction = [CCSequence actions:
+		[CCDelayTime actionWithDuration:0.2f],
+		[CCEaseExponentialOut actionWithAction:[CCMoveTo actionWithDuration:1.0f position:instructionsPosition]],
+		[CCDelayTime actionWithDuration:4.0f],
+		[CCEaseExponentialIn actionWithAction:[CCMoveTo actionWithDuration:0.5f position:ccp(-300.0f, instructionsPosition.y)]],
+		[CCCallFunc actionWithTarget:self selector:@selector(instructionsAnimationComplete)],
+		nil];
+
+	_instructionsLabel.position = ccp(_winSize.width + 300.0f, instructionsPosition.y);
+	[_instructionsLabel runAction:instructionsAction];
+}
+
+- (void)hideInstructionsAnimation
+{
+	if (_instructionsLabel != nil)
+	{
+		[_instructionsLabel stopAllActions];
+
+		id instructionsAction = [CCSequence actions:
+			[CCEaseExponentialIn actionWithAction:[CCMoveTo actionWithDuration:0.2f position:ccp(-300.0f, _instructionsLabel.position.y)]],
+			[CCCallFunc actionWithTarget:self selector:@selector(instructionsAnimationComplete)],
+			nil];
+
+		[_instructionsLabel runAction:instructionsAction];
+	}
+}
+
+- (void)instructionsAnimationComplete
+{
+	[_instructionsLabel removeFromParentAndCleanup:YES];
+	_instructionsLabel = nil;
+}
+
 #pragma mark - Touch Handling
+
+class MyQueryCallback : public b2QueryCallback
+{
+public:
+	b2Vec2 impulse;
+
+	bool ReportFixture(b2Fixture *fixture)
+	{
+		b2Body *body = fixture->GetBody();
+
+		if (body->GetType() == b2_dynamicBody)
+		{
+			body->ApplyLinearImpulse(impulse, body->GetWorldCenter());
+
+			float direction = (impulse.x < 0.0f) ? 1.0f : -1.0f;
+			body->ApplyAngularImpulse(direction * impulse.Length() / 10.0f);
+		}
+
+		return true;
+	}
+};
 
 - (b2Vec2)touchToWorld:(UITouch *)touch
 {
@@ -819,25 +819,19 @@ public:
 
 - (void)ccTouchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
 {
-	if (!_gameActive)
-		return;
-
 	[self hideInstructionsAnimation];
 
 	UITouch* touch = [touches anyObject];
 	b2Vec2 locationWorld = [self touchToWorld:touch];
-	_lastTouch = locationWorld;
+	_lastTouchLocation = locationWorld;
 }
 
 - (void)ccTouchesMoved:(NSSet *)touches withEvent:(UIEvent *)event
 {
-	if (!_gameActive)
-		return;
-
 	UITouch* touch = [touches anyObject];
 	b2Vec2 locationWorld = [self touchToWorld:touch];
 
-	b2Vec2 diff = locationWorld - _lastTouch;
+	b2Vec2 diff = locationWorld - _lastTouchLocation;
 
 	MyQueryCallback callback;
 	callback.impulse = diff;
@@ -847,7 +841,7 @@ public:
 	aabb.upperBound.Set(locationWorld.x + 1.0f, locationWorld.y + 1.0f);
 	_world->QueryAABB(&callback, aabb);
 
-	_lastTouch = locationWorld;
+	_lastTouchLocation = locationWorld;
 }
 
 @end

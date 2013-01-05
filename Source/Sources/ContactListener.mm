@@ -1,5 +1,6 @@
 
 #import "ContactListener.h"
+#import <algorithm>
 
 ContactListener::ContactListener() : contacts()
 {

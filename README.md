@@ -18,8 +18,6 @@ Now go save the galaxy!
 
 ## Building the game
 
-**NOTE:** The code is quite messy at the moment (as you'd expect for a game that was hacked together in a few days). I hope to clean it up soon so that this can serve as a decent programming example.
-
 *Galaxy Apocalypse* was made using Objective-C and the Cocos2D and Box2D libraries, which are included as a git submodule. It requires at least iOS 5 and ARC.
 
 After cloning the repo, do this from Terminal to pull in the Cocos2D source code and switch it to the stable v2.0 branch:
@@ -29,7 +27,7 @@ After cloning the repo, do this from Terminal to pull in the Cocos2D source code
     $ cd Source/External/Cocos2D
     $ git checkout release-2.0
 
-Then open `Game.xcodeproj` into Xcode and build the sucker.
+Then open `Game.xcodeproj` into Xcode and build the "Game" target.
 
 You may want to set the `COCOS2D_DEBUG` flag in the "cocos2d" target to 0 (instead of 2) to reduce the amount of debug output from Cocos2D, which slows down the game a lot.
 

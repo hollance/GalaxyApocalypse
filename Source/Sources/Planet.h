@@ -5,7 +5,8 @@
 typedef enum
 {
 	PlanetStateFalling,
-	PlanetStateCollided,
+	PlanetStateCollided,  // planet is being sucked into a portal
+	PlanetStateDead,
 }
 PlanetState;
 
@@ -13,27 +14,32 @@ PlanetState;
 
 @interface Planet : NSObject
 
-@property (nonatomic, assign) BOOL isDead;
 @property (nonatomic, assign) PlanetState state;
-@property (nonatomic, assign, readonly) int size;
-
 @property (nonatomic, assign) float fallingSpeed;
 @property (nonatomic, assign) float rotationSpeed;
 
-/*
- * -1 = black, goes with no portal
- *  0 = white, goes with any color portal
- *  1 and higher = goes only with the same portal color
- */
-@property (nonatomic, assign, readonly) int color;
-
-@property (nonatomic, assign, readonly) CGPoint position;
-
 @property (nonatomic, weak) Portal *collidedWith;
 
+@property (nonatomic, assign, readonly) CGPoint position;
+@property (nonatomic, assign, readonly) int size;
+@property (nonatomic, assign, readonly) int color;
+
+/*
+ * Size is a value in the range 0 - 3.
+ *
+ * Color means the following:
+ *
+ *   -1 = black hole, goes with no portal
+ *    0 = moon, goes with any color portal
+ *    1 = red    }
+ *    2 = green  } go only with the same portal color
+ *    3 = blue   }
+ */
 - (id)initWithWorld:(b2World *)world size:(int)size position:(CGPoint)position angle:(float)angle color:(int)color;
+
 - (void)addSpriteTo:(CCNode *)parent;
-- (void)removeFromParent;
+- (void)removeSprite;
+
 - (void)update:(ccTime)dt;
 - (void)handleCollision;
 

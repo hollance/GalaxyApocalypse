@@ -8,19 +8,16 @@
 	CCSprite *_sprite;    // owned by CCSpriteBatchNode
 	b2World *_world;      // owned by GameLayer
 	b2Body *_body;        // owned by b2World
-	b2Fixture *_fixture;  // owned by b2World
 }
-
-@synthesize isDead = _isDead;
 
 - (id)initWithWorld:(b2World *)world size:(int)size position:(CGPoint)position angle:(float)angle color:(int)color
 {
 	if ((self = [super init]))
 	{
+		_state = PlanetStateFalling;
 		_world = world;
 		_size = size;
 		_color = color;
-		_state = PlanetStateFalling;
 
 		b2BodyDef bodyDef;
 		bodyDef.type = b2_dynamicBody;
@@ -49,7 +46,7 @@
 		fixtureDef.friction = 1.0f;
 		fixtureDef.restitution = 0.0f;
 		fixtureDef.density = (1.0f - shape.m_radius*shape.m_radius) * 0.5f;  // trial-and-error
-		_fixture = _body->CreateFixture(&fixtureDef);
+		_body->CreateFixture(&fixtureDef);
 	}
 	return self;
 }
@@ -58,21 +55,8 @@
 {
 	//NSLog(@"dealloc %@", self);
 
-	[_sprite removeFromParentAndCleanup:YES];
-
-	if (_body != NULL)
-		_world->DestroyBody(_body);
-}
-
-- (void)addSpriteTo:(CCNode *)parent
-{
-	[parent addChild:_sprite];
-}
-
-- (void)removeFromParent
-{
-	[_sprite removeFromParentAndCleanup:YES];
-	_sprite = nil;
+	[self removeSprite];
+	[self removeBody];
 }
 
 - (void)setFallingSpeed:(float)fallingSpeed
@@ -85,6 +69,34 @@
 {
 	_rotationSpeed = rotationSpeed;
 	_body->SetAngularVelocity(CC_DEGREES_TO_RADIANS(rotationSpeed));
+}
+
+- (CGPoint)position
+{
+	return _sprite.position;
+}
+
+- (void)addSpriteTo:(CCNode *)parent
+{
+	[parent addChild:_sprite];
+}
+
+- (void)removeSprite
+{
+	if (_sprite != NULL)
+	{
+		[_sprite removeFromParentAndCleanup:YES];
+		_sprite = nil;
+	}
+}
+
+- (void)removeBody
+{
+	if (_body != NULL)
+	{
+		_world->DestroyBody(_body);
+		_body = NULL;
+	}
 }
 
 - (void)update:(ccTime)dt
@@ -105,12 +117,10 @@
 	{
 		self.state = PlanetStateCollided;
 
-		_world->DestroyBody(_body);
-		_body = NULL;
-
-		float duration = 0.3f;
+		[self removeBody];
 
 		// Wrong planets get sucked in a bit slower
+		float duration = 0.3f;
 		if (self.color != 0 && self.collidedWith.color != 0 && self.color != self.collidedWith.color)
 			duration = 0.6f;
 
@@ -120,21 +130,11 @@
 				[CCMoveTo actionWithDuration:duration position:self.collidedWith.center],
 				[CCFadeOut actionWithDuration:duration],
 				nil],
-			[CCCallFunc actionWithTarget:self selector:@selector(collisionAnimationComplete)],
+			[CCCallBlock actionWithBlock:^{ self.state = PlanetStateDead; }],
 			nil];
 
 		[_sprite runAction:sequence];
 	}
-}
-
-- (void)collisionAnimationComplete
-{
-	self.isDead = YES;
-}
-
-- (CGPoint)position
-{
-	return _sprite.position;
 }
 
 @end

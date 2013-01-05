@@ -1,7 +1,6 @@
 
 #import "Box2D.h"
 #import <vector>
-#import <algorithm>
 
 struct Contact
 {
