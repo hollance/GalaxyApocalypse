@@ -1,28 +1,19 @@
 
 #import "cocos2d.h"
-#import "GameLayer.h"
-#import "IntroLayer.h"
-
-typedef enum
-{
-	GameStateIntro,
-	GameStatePlaying,
-	GameStateGameOver,
-}
-GameState;
 
 /*
- * This game only has one scene. It has two layers: IntroLayer for the intro
- * and game over screens, and GameLayer for the actual game. The scene also
- * shows the background image.
+ * This game only has one scene. The scene has three layers, of which one is
+ * only active at a time: IntroLayer for the intro screen, GameLayer for the
+ * actual game, and GameOverLayer for when the player loses.
+ *
+ * The MainScene also display the background image (which is just a sprite).
  */
 @interface MainScene : CCScene
-
-@property (nonatomic, assign, readonly) GameState gameState;
 
 + (instancetype)scene;
 
 - (void)exitIntro;
 - (void)exitGame:(int)score;
+- (void)exitGameOver;
 
 @end

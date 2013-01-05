@@ -1,12 +1,15 @@
 
 #import "MainScene.h"
+#import "GameLayer.h"
+#import "GameOverLayer.h"
+#import "IntroLayer.h"
 
 @implementation MainScene
 {
-	GameState _gameState;
 	CCSprite *_backgroundSprite;
-	GameLayer *_gameLayer;
 	IntroLayer *_introLayer;
+	GameLayer *_gameLayer;
+	GameOverLayer *_gameOverLayer;
 }
 
 + (instancetype)scene
@@ -19,28 +22,23 @@
 	if ((self = [super init]))
 	{
 		_backgroundSprite = [CCSprite spriteWithFile:@"Background.png"];
-		_backgroundSprite.anchorPoint = ccp(0, 0);
-		_backgroundSprite.position = ccp(0, 0);
+		_backgroundSprite.anchorPoint = ccp(0.0f, 0.0f);
+		_backgroundSprite.position = ccp(0.0f, 0.0f);
 		[self addChild:_backgroundSprite];
 
-		/*
-		_backgroundSprite.opacity = 0;
-
-		id action = [CCSequence actions:
-			[CCDelayTime actionWithDuration:2.0f],
-			[CCFadeIn actionWithDuration:2.0f],
-			nil];
-
-		[_backgroundSprite runAction:action];
-		*/
+		_introLayer = [IntroLayer node];
+		_introLayer.mainScene = self;
+		[self addChild:_introLayer];
 
 		_gameLayer = [GameLayer node];
 		_gameLayer.mainScene = self;
 		[self addChild:_gameLayer];
 
-		_introLayer = [IntroLayer node];
-		_introLayer.mainScene = self;
-		[self addChild:_introLayer];
+		_gameOverLayer = [GameOverLayer node];
+		_gameOverLayer.mainScene = self;
+		[self addChild:_gameOverLayer];
+
+		[_introLayer showIntro];
 	}
 	return self;
 }
@@ -48,13 +46,22 @@
 - (void)exitIntro
 {
 	_introLayer.visible = NO;
+	_gameLayer.visible = YES;
 	[_gameLayer startGame];
 }
 
 - (void)exitGame:(int)score
 {
+	_gameLayer.visible = NO;
+	_gameOverLayer.visible = YES;
+	[_gameOverLayer gameOver:score];
+}
+
+- (void)exitGameOver
+{
+	_gameOverLayer.visible = NO;
 	_introLayer.visible = YES;
-	[_introLayer gameOver:score];
+	[_introLayer showIntro];
 }
 
 @end

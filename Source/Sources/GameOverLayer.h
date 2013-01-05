@@ -3,10 +3,10 @@
 
 @class MainScene;
 
-@interface IntroLayer : CCLayer
+@interface GameOverLayer : CCLayer
 
 @property (nonatomic, weak) MainScene *mainScene;
 
-- (void)showIntro;
+- (void)gameOver:(int)score;
 
 @end

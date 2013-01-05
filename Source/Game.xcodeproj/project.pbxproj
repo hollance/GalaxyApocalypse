@@ -46,6 +46,7 @@
 		7B499E641696204300884A46 /* Font.png in Resources */ = {isa = PBXBuildFile; fileRef = 7B499E601696204300884A46 /* Font.png */; };
 		7B499E651696204300884A46 /* FontSmall.fnt in Resources */ = {isa = PBXBuildFile; fileRef = 7B499E611696204300884A46 /* FontSmall.fnt */; };
 		7B499E661696204300884A46 /* FontSmall.png in Resources */ = {isa = PBXBuildFile; fileRef = 7B499E621696204300884A46 /* FontSmall.png */; };
+		7B71461516987EE10072C3B6 /* GameOverLayer.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7B71461416987EE10072C3B6 /* GameOverLayer.mm */; };
 		7B76AF21168AF6F7001234B9 /* ContactListener.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7B76AF20168AF6F7001234B9 /* ContactListener.mm */; };
 		7B76AF24168AF7F0001234B9 /* Sprites.plist in Resources */ = {isa = PBXBuildFile; fileRef = 7B76AF22168AF7F0001234B9 /* Sprites.plist */; };
 		7B76AF25168AF7F0001234B9 /* Sprites.png in Resources */ = {isa = PBXBuildFile; fileRef = 7B76AF23168AF7F0001234B9 /* Sprites.png */; };
@@ -530,6 +531,8 @@
 		7B499E601696204300884A46 /* Font.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Font.png; sourceTree = "<group>"; };
 		7B499E611696204300884A46 /* FontSmall.fnt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FontSmall.fnt; sourceTree = "<group>"; };
 		7B499E621696204300884A46 /* FontSmall.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = FontSmall.png; sourceTree = "<group>"; };
+		7B71461316987EE10072C3B6 /* GameOverLayer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GameOverLayer.h; path = Sources/GameOverLayer.h; sourceTree = "<group>"; };
+		7B71461416987EE10072C3B6 /* GameOverLayer.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = GameOverLayer.mm; path = Sources/GameOverLayer.mm; sourceTree = "<group>"; };
 		7B76AF1E168AF6D9001234B9 /* Defs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Defs.h; path = Sources/Defs.h; sourceTree = "<group>"; };
 		7B76AF1F168AF6F7001234B9 /* ContactListener.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ContactListener.h; path = Sources/ContactListener.h; sourceTree = "<group>"; };
 		7B76AF20168AF6F7001234B9 /* ContactListener.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = ContactListener.mm; path = Sources/ContactListener.mm; sourceTree = "<group>"; };
@@ -607,9 +610,9 @@
 				7B19FDB21691909C006CADF2 /* ActionsTest.app */,
 				7B19FDB41691909C006CADF2 /* ActionsWithBlocksSample.app */,
 				7B19FDB61691909C006CADF2 /* AttachTest.app */,
-				7B19FDB81691909C006CADF2 /* Box2dTest.app */,
+				7B19FDB81691909C006CADF2 /* Box2dAccelTouchTest.app */,
 				7B19FDBA1691909C006CADF2 /* Box2dTestBed.app */,
-				7B19FDBC1691909C006CADF2 /* ChipmunkTest.app */,
+				7B19FDBC1691909C006CADF2 /* ChipmunkAccelTouchTest.app */,
 				7B19FDBE1691909C006CADF2 /* ClickAndMoveTest.app */,
 				7B19FDC21691909C006CADF2 /* CocosDenshion - Tom The Turret.app */,
 				7B19FDC41691909C006CADF2 /* CocosDenshion - Drum Pad.app */,
@@ -799,6 +802,8 @@
 				7B76AF1E168AF6D9001234B9 /* Defs.h */,
 				7B8CD07B1693814400BECEAB /* GameLayer.h */,
 				7B8CD07C1693814400BECEAB /* GameLayer.mm */,
+				7B71461316987EE10072C3B6 /* GameOverLayer.h */,
+				7B71461416987EE10072C3B6 /* GameOverLayer.mm */,
 				7B8CD07816937FD600BECEAB /* IntroLayer.h */,
 				7B8CD07916937FD600BECEAB /* IntroLayer.mm */,
 				7B1FACAA168A37E40001B75A /* MainScene.h */,
@@ -965,7 +970,7 @@
 			remoteRef = 7B19FDB51691909C006CADF2 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		7B19FDB81691909C006CADF2 /* Box2dTest.app */ = {
+		7B19FDB81691909C006CADF2 /* Box2dAccelTouchTest.app */ = {
 			isa = PBXReferenceProxy;
 			fileType = wrapper.application;
 			path = Box2dAccelTouchTest.app;
@@ -979,7 +984,7 @@
 			remoteRef = 7B19FDB91691909C006CADF2 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		7B19FDBC1691909C006CADF2 /* ChipmunkTest.app */ = {
+		7B19FDBC1691909C006CADF2 /* ChipmunkAccelTouchTest.app */ = {
 			isa = PBXReferenceProxy;
 			fileType = wrapper.application;
 			path = ChipmunkAccelTouchTest.app;
@@ -1357,6 +1362,7 @@
 				7B02904A1691D82100F06548 /* Portal.mm in Sources */,
 				7B8CD07A16937FD600BECEAB /* IntroLayer.mm in Sources */,
 				7B8CD07D1693814400BECEAB /* GameLayer.mm in Sources */,
+				7B71461516987EE10072C3B6 /* GameOverLayer.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

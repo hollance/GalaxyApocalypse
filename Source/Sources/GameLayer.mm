@@ -89,8 +89,6 @@ public:
 		[self setUpWorld];
 		[self setUpScreenBox];
 		[self setUpSprites];
-
-		[self schedule:@selector(update:) interval:1.0f/60.0f];
 	}
 	return self;
 }
@@ -197,6 +195,8 @@ public:
 
 - (void)startGame
 {
+	[[SimpleAudioEngine sharedEngine] playBackgroundMusic:@"Game.mp3"];
+
 	_gameActive = YES;
 	_gameOver = NO;
 	_firstTime = YES;
@@ -239,6 +239,8 @@ public:
 	[self updateScoreLabel];
 	[self updateTimerLabel];
 	[self updateDangerLabel:0.0f];
+
+	[self schedule:@selector(update:) interval:1.0f/60.0f];
 }
 
 - (void)showInstructionsAnimation
@@ -792,9 +794,6 @@ public:
 	_planets = nil;
 	_portals = nil;
 
-	_gameActive = NO;
-	[self.mainScene exitGame:_score];
-
 	[_scoreLabel removeFromParentAndCleanup:YES];
 	_scoreLabel = nil;
 
@@ -803,6 +802,10 @@ public:
 
 	[_dangerLabel removeFromParentAndCleanup:YES];
 	_dangerLabel = nil;
+
+	_gameActive = NO;
+	[self unschedule:@selector(update:)];
+	[self.mainScene exitGame:_score];
 }
 
 #pragma mark - Touch Handling
