@@ -1,8 +1,10 @@
 # GALAXY APOCALYPSE
 
-This is my January 2013 game for [One Game a Month](http://www.onegameamonth.com). See also my [blog post](http://www.hollance.com/2013/01/making-12-games-in-one-year/).
+This is my January 2013 game for [One Game a Month](http://www.onegameamonth.com).
 
 ![Screenshot](https://github.com/hollance/GalaxyApocalypse/raw/master/Screenshot.png)
+
+[Watch a video of the game in action (YouTube)](http://www.youtube.com/watch?v=5err_uBisYo)
 
 ## The game rules
 
@@ -10,11 +12,23 @@ The galaxy is falling apart! To save it, you have to move the planets back to wh
 
 Every so often portals appear on the screen. Your job is to swipe the planets into a portal of the matching color.
 
-The portals lose power over time. Matching a planet with the wrong portal will drain even more power from the portal. If a portal has no more power it collapses and takes the entire universe with it!
+The portals lose power over time. Matching a planet with the wrong portal will drain even more power from the portal. If a portal has no more power it collapses and takes the entire universe with it! You don’t want that to happen on your watch…
 
 Moons (the grey things) can be matched with any portal. A white portal accepts any type of planet. The only thing you should never send through any portal is a black hole (obviously).
 
 Now go save the galaxy!
+
+## One Game a Month
+
+[One Game a Month](http://www.onegameamonth.com) is a challenge to make twelve games in one year, roughly one per month.
+
+I've done similar challenges in the past, such as composing at least one piece of piano music or coming up with at least one app idea each day for 30 days in a row. It's a lot of work but it also pushes your creativity to higher levels.
+
+When you limit yourself to making a game in a very short time, by necessity you have to limit the scope of the game. Such constraints can be quite inspirational. How small can you make a game that is still interesting?
+
+My most successful game, _Ultimate Countdown_ (now removed from the App Store), was done in a single weekend as a similar kind of challenge. It ended up being downloaded over 250,000 times, which I found quite impressive back in 2008, even for a free game.
+
+So if you're into game development -- or if making games is something you've always dreamed of -- then head on over to [www.onegameamonth.com](http://www.onegameamonth.com) and sign up!
 
 ## Building the game
 
@@ -35,7 +49,7 @@ I also included the Photoshop files for the artwork (CS6) and the individual spr
 
 ## What next?
 
-The game is OK but needs more work to stand out.
+The game took five days to make from scratch to finish. If I had more time I would polish it more and put it on the App Store. In its current shape the game is OK but needs more work to stand out.
 
 Some ideas:
 
@@ -51,9 +65,7 @@ Known issues:
 
 - The text is sometimes blurry. I blame Cocos2D for this. ;-)
 
-## License and credits
-
-> Don't be a jerk and put this game on the App Store. Just because I give it away for free doesn't mean it's cool to remove my name from the credits and charge money for it. Yes, I'm talking to you, Wang Ting.
+## Credits
 
 Most of the imagery was based on NASA photographs from [www.jpl.nasa.gov](http://www.jpl.nasa.gov).
 
@@ -64,6 +76,8 @@ Game music: *Trial By Fire* by Matt McFarland ([www.mattmcfarland.com](http://ww
 Explosion animation by [WrathGames Studio](http://opengameart.org/content/wgstudio-explosion-animation).
 
 Sound effects from [freesound.org](http://freesound.org) and [opengameart.org](http://opengameart.org). Because I was in a hurry when I made this game, I didn't pay much attention to the licensing on the sound effects. They are OK for non-commercial use but may not all be cleared for commercial use.
+
+## License
 
 Source code is copyright (C) 2013 M.I. Hollemans
 
